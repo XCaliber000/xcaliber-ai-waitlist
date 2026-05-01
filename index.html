@@ -338,6 +338,11 @@ We'll reach out when access opens. Keep an eye on your inbox and your DMs.
                 </div>
 
                 <div class="form-group">
+                    <label for="telegram">Telegram Username</label>
+                    <input type="text" id="telegram" name="Telegram" placeholder="@yourtelegram" required>
+                </div>
+
+                <div class="form-group">
                     <label for="country">Country</label>
                     <select id="country" name="Country" required>
                         <option value="" disabled selected>Select your country</option>
@@ -450,11 +455,13 @@ We'll reach out when access opens. Keep an eye on your inbox and your DMs.
             btn.disabled = true;
         });
 
-        // Auto-prepend @ to X handle
-        document.getElementById('x_handle').addEventListener('blur', function() {
-            if (this.value && !this.value.startsWith('@')) {
-                this.value = '@' + this.value;
-            }
+        // Auto-prepend @ to handle fields
+        ['x_handle', 'telegram'].forEach(function(id) {
+            document.getElementById(id).addEventListener('blur', function() {
+                if (this.value && !this.value.startsWith('@')) {
+                    this.value = '@' + this.value;
+                }
+            });
         });
     </script>
 </body>
