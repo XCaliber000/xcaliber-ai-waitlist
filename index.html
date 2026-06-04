@@ -310,22 +310,9 @@
         <div class="form-container">
             <div class="form-title">Join the waitlist</div>
 
-            <form id="waitlist-form" action="https://formsubmit.co/regis.xcal.ops@outlook.com" method="POST">
-                <!-- FormSubmit config -->
-                <input type="hidden" name="_subject" value="🚀 New XCaliber AI Waitlist Signup">
-                <input type="hidden" name="_template" value="table">
-                <input type="hidden" name="_captcha" value="false">
-                <input type="hidden" name="_next" value="">
-                <input type="hidden" name="_autoresponse" value="Thanks for joining the XCaliber AI waitlist! 🎯
-
-You're now on the list for early access to XCaliber AI — a premium Seedance 2.0 generator and AI story maker built for creators.
-
-We're capping the number of users to ensure a premium experience, so your spot is secured.
-
-We'll reach out when access opens. Keep an eye on your inbox and your DMs.
-
-— XCaliber AI">
-                <input type="text" name="_honey" style="display:none">
+            <form id="waitlist-form" novalidate>
+                <!-- Honeypot — invisible to humans, autofilled by lazy bots -->
+                <input type="text" name="hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
 
                 <div class="form-group">
                     <label for="email">Email</label>
@@ -410,9 +397,11 @@ We'll reach out when access opens. Keep an eye on your inbox and your DMs.
 
             <div class="success-state" id="success-state">
                 <div class="check">✓</div>
-                <h2>You're on the list.</h2>
-                <p>We'll reach out when access opens. Keep an eye on your inbox — and your DMs.</p>
+                <h2>You're in. Taking you to Telegram…</h2>
+                <p>Not redirecting? <a href="https://t.me/+utRcGqVDJ5tlZDkx" style="color:#a5b4fc;text-decoration:underline">Tap here to join</a>.</p>
             </div>
+
+            <div id="form-error" style="display:none;margin-top:16px;padding:12px 14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:8px;color:#fca5a5;font-size:14px;line-height:1.5"></div>
 
             <p class="spots-note">🔒 <span>Hard cap on users.</span> When spots fill, the waitlist closes.</p>
         </div>
@@ -438,22 +427,13 @@ We'll reach out when access opens. Keep an eye on your inbox and your DMs.
     </div>
 
     <script>
-        // Set the _next redirect to current page with success param
-        const nextInput = document.querySelector('input[name="_next"]');
-        nextInput.value = window.location.href.split('?')[0] + '?success=true';
+        const API_URL = 'https://xcaliber-waitlist-api.vercel.app/api/submit';
+        const TG_FALLBACK_URL = 'https://t.me/+utRcGqVDJ5tlZDkx';
 
-        // Check for success redirect
-        if (window.location.search.includes('success=true')) {
-            document.getElementById('waitlist-form').style.display = 'none';
-            document.getElementById('success-state').style.display = 'block';
-        }
-
-        // Form submission UX
-        document.getElementById('waitlist-form').addEventListener('submit', function() {
-            const btn = document.getElementById('submit-btn');
-            btn.textContent = 'Submitting...';
-            btn.disabled = true;
-        });
+        const form = document.getElementById('waitlist-form');
+        const successState = document.getElementById('success-state');
+        const errorBox = document.getElementById('form-error');
+        const btn = document.getElementById('submit-btn');
 
         // Auto-prepend @ to handle fields
         ['x_handle', 'telegram'].forEach(function(id) {
@@ -462,6 +442,72 @@ We'll reach out when access opens. Keep an eye on your inbox and your DMs.
                     this.value = '@' + this.value;
                 }
             });
+        });
+
+        function showError(msg) {
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+            btn.textContent = 'Try again';
+            btn.disabled = false;
+        }
+
+        const ERR_COPY = {
+            bad_email: 'Please enter a valid email address.',
+            missing_x: 'Please add your 𝕏 username.',
+            missing_telegram: 'Please add your Telegram username.',
+            missing_country: 'Please pick your country.',
+            bad_x_format: 'That 𝕏 username looks off. Letters, numbers, and underscores only.',
+            bad_tg_format: 'That Telegram username looks off. Letters, numbers, and underscores only.',
+            turnstile_failed: 'Bot check failed. Please refresh and try again.',
+            no_turnstile: 'Please complete the bot check.',
+            turnstile_unreachable: 'Bot check service is temporarily unreachable. Please try again in a moment.'
+        };
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            errorBox.style.display = 'none';
+
+            // Basic HTML5-style required check (since novalidate is on)
+            const email = document.getElementById('email').value.trim();
+            const xHandle = document.getElementById('x_handle').value.trim();
+            const telegram = document.getElementById('telegram').value.trim();
+            const country = document.getElementById('country').value;
+            if (!email || !xHandle || !telegram || !country) {
+                showError('Please fill in every field.');
+                return;
+            }
+
+            btn.textContent = 'Submitting…';
+            btn.disabled = true;
+
+            const payload = {
+                email: email,
+                xHandle: xHandle,
+                telegram: telegram,
+                country: country,
+                hp: form.elements['hp'] ? form.elements['hp'].value : '',
+                turnstileToken: window._turnstileToken || ''
+            };
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(function () { return {}; });
+
+                if (data && data.ok && data.redirect) {
+                    form.style.display = 'none';
+                    successState.style.display = 'block';
+                    setTimeout(function () { window.location.href = data.redirect; }, 900);
+                    return;
+                }
+
+                showError(ERR_COPY[data && data.error] || 'Something went wrong. Please try again.');
+            } catch (err) {
+                showError('Network error — please check your connection and try again.');
+            }
         });
     </script>
 </body>
