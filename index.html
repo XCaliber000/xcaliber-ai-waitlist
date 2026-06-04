@@ -8,6 +8,7 @@
     <meta property="og:title" content="RunTitan — Early Access Waitlist">
     <meta property="og:description" content="Be first in line for RunTitan — a premium Seedance 2.0 generator and AI story maker built for creators. Hard cap on users.">
     <meta property="og:type" content="website">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
         
@@ -393,6 +394,16 @@
                 <button type="submit" class="submit-btn" id="submit-btn">
                     Reserve My Spot
                 </button>
+
+                <div id="cf-turnstile-wrap" style="margin-top:16px;display:flex;justify-content:center;min-height:0">
+                    <div class="cf-turnstile"
+                         data-sitekey="0x4AAAAAADe7YWG09jek3w4m"
+                         data-callback="onTurnstileSuccess"
+                         data-expired-callback="onTurnstileExpired"
+                         data-error-callback="onTurnstileError"
+                         data-theme="dark"
+                         data-appearance="interaction-only"></div>
+                </div>
             </form>
 
             <div class="success-state" id="success-state">
@@ -427,6 +438,12 @@
     </div>
 
     <script>
+        // Cloudflare Turnstile callbacks — managed widget writes token here
+        window._turnstileToken = '';
+        window.onTurnstileSuccess = function (token) { window._turnstileToken = token; };
+        window.onTurnstileExpired = function () { window._turnstileToken = ''; };
+        window.onTurnstileError = function () { window._turnstileToken = ''; };
+
         const API_URL = 'https://xcaliber-waitlist-api.vercel.app/api/submit';
         const TG_FALLBACK_URL = 'https://t.me/+utRcGqVDJ5tlZDkx';
 
@@ -479,6 +496,16 @@
 
             btn.textContent = 'Submitting…';
             btn.disabled = true;
+
+            // Wait up to 5s for Turnstile token if not ready yet (managed widget is async)
+            if (!window._turnstileToken) {
+                btn.textContent = 'Verifying…';
+                const start = Date.now();
+                while (!window._turnstileToken && Date.now() - start < 5000) {
+                    await new Promise(function (r) { setTimeout(r, 100); });
+                }
+                btn.textContent = 'Submitting…';
+            }
 
             const payload = {
                 email: email,
